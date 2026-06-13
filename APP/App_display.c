@@ -8,14 +8,13 @@ static void App_display_showTitle()
     }
     
 }
-
 void App_display_init(void) 
 {
-    //µ×²ãÇı¶¯³õÊ¼»¯
+    //åº•å±‚I2Cåˆå§‹åŒ–
     MX_I2C2_Init();
-    //ÖĞ¼ä²ãÏÔÊ¾¿â³õÊ¼»¯
+    //ä¸­é—´ä»¶OLEDæ˜¾ç¤ºåˆå§‹åŒ–
     Inf_OLED_Init();
-    //ÏÔÊ¾ÄÚÈİ³õÊ¼»¯
+    //æ˜¾ç¤ºæ•°æ®åˆå§‹åŒ–
     Inf_OLED_Clear();
     printf("Display initialized\r\n");
     
@@ -23,10 +22,10 @@ void App_display_init(void)
 
 void App_display_show_message(const char *message) 
 {
-    //ÏÔÊ¾±êÌâ
+    //æ˜¾ç¤ºæ ‡é¢˜
     App_display_showTitle();
-    //ÏÔÊ¾ÄÚÈİ
-    Inf_OLED_ShowString(24, 24, message, 16, 1);
-    //Ë¢ĞÂÏÔÊ¾ÄÚÈİ
+    //æ˜¾ç¤ºæ¶ˆæ¯
+    Inf_OLED_ShowString(24, 24, (uint8_t *)message, 12, 1);
+    //åˆ·æ–°æ˜¾ç¤º
     Inf_OLED_Refresh();
 }

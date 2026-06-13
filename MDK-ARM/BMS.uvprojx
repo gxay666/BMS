@@ -671,6 +671,11 @@
               <FileType>1</FileType>
               <FilePath>..\APP\App_main.c</FilePath>
             </File>
+            <File>
+              <FileName>App_display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\APP\App_display.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

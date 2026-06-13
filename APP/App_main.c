@@ -1,15 +1,20 @@
 #include "App_main.h"
 
-static void App_main_task(void *pvParameters)
+void App_main_task(void *pvParameters)
 {
     App_display_init();
     App_display_show_message("BMS is ready");
 
     Int_BQ769_Ship();
-    vTaskDelay(300);
-    Int_BQ769_WakeUp();
+    vTaskDelay(300); 
+    Int_BQ769_WakeUp();   
+    
+    Int_BQ769_LoadGain();
+    Int_BQ769_LoadOffset();
+    
     while(1)
-    {       
+    {  
+       printf("Task running...\r\n");     
        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay for 2000 milliseconds     
     }
 }
