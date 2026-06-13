@@ -1,0 +1,14 @@
+bms\app_main.o: ..\APP\App_main.c
+bms\app_main.o: ..\APP\App_main.h
+bms\app_main.o: ..\FreeRTOS\include\FreeRTOS.h
+bms\app_main.o: D:\keil5\ARM\ARMCC\Bin\..\include\stddef.h
+bms\app_main.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdint.h
+bms\app_main.o: ..\FreeRTOS\include\FreeRTOSConfig.h
+bms\app_main.o: ..\FreeRTOS\include\projdefs.h
+bms\app_main.o: ..\FreeRTOS\include\portable.h
+bms\app_main.o: ..\FreeRTOS\include\deprecated_definitions.h
+bms\app_main.o: ..\FreeRTOS\portable\RVDS\portmacro.h
+bms\app_main.o: ..\FreeRTOS\include\mpu_wrappers.h
+bms\app_main.o: ..\FreeRTOS\include\task.h
+bms\app_main.o: ..\FreeRTOS\include\list.h
+bms\app_main.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdio.h
