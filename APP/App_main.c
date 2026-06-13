@@ -12,9 +12,10 @@ void App_main_task(void *pvParameters)
     Int_BQ769_LoadGain();
     Int_BQ769_LoadOffset();
     
+
     while(1)
     {  
-       printf("Task running...\r\n");     
+       Int_BQ769_LoadCellVoltage();     
        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay for 2000 milliseconds     
     }
 }

@@ -38,8 +38,10 @@ void Int_BQ769_WriteReg(uint8_t reg, uint8_t data);
 void Int_BQ769_ReadReg(uint8_t reg, uint8_t *buff, uint8_t read_len);
 
 void Int_BQ769_LoadGain(void);
+
 void Int_BQ769_LoadOffset(void);  
 
+void Int_BQ769_LoadCellVoltage(void);
 bool Int_BQ769_Read(uint8_t reg, uint8_t *read_buff, uint8_t read_len);
 
 #endif // __INT_BQ769_H_

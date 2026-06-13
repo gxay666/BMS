@@ -5,6 +5,8 @@ RegisterGroup BQ769_RegisterGroup;
 static float gain_mv = 0;
 //offset
 static int8_t offset_mv = 0;
+//cell voltage
+static float cell_voltage_v[5] = {0};
 /**
  * CRC-8 校验算法实现
  * 多项式: x^8 + x^2 + x + 1 (0x07)
@@ -139,11 +141,24 @@ void Int_BQ769_LoadGain(void)
     uint8_t gain_adc_value = ((gain1 & 0x0C) << 1) | (gain2 >> 5);
 
     gain_mv = (gain_adc_value + 365) / 1000.0f;
-    printf("BQ769 Load Gain: gain_adc_value=%d, gain_mv=%.3fmv/LSB\r\n", gain_adc_value, gain_mv);
+    printf("BQ769 Load Gain: gain_adc_value=%d, gain_mv=%fmv/LSB\r\n", gain_adc_value, gain_mv);
 }
 
 void Int_BQ769_LoadOffset(void)
 {
     Int_BQ769_ReadReg(BQ_ADCOFFSET, (uint8_t *)&offset_mv, 1);
     printf("BQ769 Load Offset: offset_mv=%dmv/LSB\r\n", offset_mv);
+}
+
+void Int_BQ769_LoadCellVoltage(void)
+{
+    printf("--------------单个电芯电压-----------------\r\n");
+    uint8_t cell_voltage_buff[10] = {0};
+    Int_BQ769_ReadReg(BQ_VC1_HI, cell_voltage_buff, 10);
+    for (size_t i = 0; i < 5; i++)
+    {
+        uint16_t cell_adc_value = ((cell_voltage_buff[i * 2] &0x3F) << 8) | cell_voltage_buff[i * 2 + 1];
+        cell_voltage_v[i] = (cell_adc_value * gain_mv + offset_mv) / 1000.0f;
+        printf("Cell%d Voltage: adc_value=%d, voltage=%fv\r\n", i + 1, cell_adc_value, cell_voltage_v[i]);
+    }
 }
