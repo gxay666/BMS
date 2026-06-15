@@ -11,6 +11,7 @@ void App_main_task(void *pvParameters)
     
     Int_BQ769_LoadGain();
     Int_BQ769_LoadOffset();
+    Int_BQ769_ConfigReg(); 
     
 
     while(1)

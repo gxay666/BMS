@@ -162,3 +162,49 @@ void Int_BQ769_LoadCellVoltage(void)
         printf("Cell%d Voltage: adc_value=%d, voltage=%fv\r\n", i + 1, cell_adc_value, cell_voltage_v[i]);
     }
 }
+
+void Int_BQ769_ConfigReg(void)
+{
+    // 配置SYS_ctrl1寄存器
+    BQ769_RegisterGroup.SysCtrl1.SysCtrl1Byte = 0x00;
+    BQ769_RegisterGroup.SysCtrl1.SysCtrl1Bit.ADC_EN = 1;// 使能ADC
+    BQ769_RegisterGroup.SysCtrl1.SysCtrl1Bit.TEMP_SEL = 1;// 选择热敏电阻测温
+    Int_BQ769_WriteReg(BQ_SYS_CTRL1, BQ769_RegisterGroup.SysCtrl1.SysCtrl1Byte);
+    // 配置SYS_ctrl2寄存器
+    BQ769_RegisterGroup.SysCtrl2.SysCtrl2Byte = 0x00;
+    BQ769_RegisterGroup.SysCtrl2.SysCtrl2Bit.DELAY_DIS = 0; // 使能过压欠压延迟
+    BQ769_RegisterGroup.SysCtrl2.SysCtrl2Bit.CC_EN = 1; // 使能连续CC计数
+    BQ769_RegisterGroup.SysCtrl2.SysCtrl2Bit.CHG_ON = 1; // 充电MOSFET默认开启
+    BQ769_RegisterGroup.SysCtrl2.SysCtrl2Bit.DSG_ON = 1; // 放电MOSFET默认开启
+    Int_BQ769_WriteReg(BQ_SYS_CTRL2, BQ769_RegisterGroup.SysCtrl2.SysCtrl2Byte);
+    // 配置保护寄存器1
+    BQ769_RegisterGroup.Protect1.Protect1Byte = 0x00;
+    BQ769_RegisterGroup.Protect1.Protect1Bit.RSNS= 1; // 提高电流检测的阈值（被测电阻>=5mΩ时需要翻倍）
+    BQ769_RegisterGroup.Protect1.Protect1Bit.SCD_DELAY = BMS_SCD_DELAY_200us; // 短路检测延迟时间设置为200us,具体得实验室测试验证，过短可能会误触发，过长可能会延迟保护响应·
+    BQ769_RegisterGroup.Protect1.Protect1Bit.SCD_THRESH = 0x3; // 短路检测阈值设置为10mV,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
+    Int_BQ769_WriteReg(BQ_PROTECT1, BQ769_RegisterGroup.Protect1.Protect1Byte);
+    // 配置保护寄存器2
+    BQ769_RegisterGroup.Protect2.Protect2Byte = 0x00;
+    BQ769_RegisterGroup.Protect2.Protect2Bit.OCD_DELAY = BMS_OCD_DELAY_640ms; // 过流检测延迟时间设置为1ms,具体得实验室测试验证，过短可能会误触发，过长可能会延迟保护响应
+    BQ769_RegisterGroup.Protect2.Protect2Bit.OCD_THRESH = 0xB; // 过流检测阈值设置为160mV,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
+    Int_BQ769_WriteReg(BQ_PROTECT2, BQ769_RegisterGroup.Protect2.Protect2Byte);
+    // 配置保护寄存器3
+    BQ769_RegisterGroup.Protect3.Protect3Byte = 0x00;
+    BQ769_RegisterGroup.Protect3.Protect3Bit.OV_DELAY = BMS_OV_DELAY_4s; // 过压检测延迟时间设置为4s,具体得实验室测试验证，过短可能会误触发，过长可能会延迟保护响应
+    BQ769_RegisterGroup.Protect3.Protect3Bit.UV_DELAY = BMS_UV_DELAY_4s; // 欠压检测延迟时间设置为4s,具体得实验室测试验证，过短可能会误触发，过长可能会延迟保护响应
+    Int_BQ769_WriteReg(BQ_PROTECT3, BQ769_RegisterGroup.Protect3.Protect3Byte);
+    // 配置OVTrip和UVTrip寄存器
+/*  
+    OV_TRIP_FULL = (OV – ADCOFFSET) ÷ ADCGAIN
+    UV_TRIP_FULL = (UV – ADCOFFSET) ÷ ADCGAIN
+*/
+    uint16_t OV_TRIP_FULL = (uint16_t)((OV_Trip * 1000 - offset_mv) / gain_mv);
+    uint8_t OV_TRIP_REG = (OV_TRIP_FULL >> 4) & 0xFF; // 取中间8位
+    Int_BQ769_WriteReg(BQ_OV_TRIP, OV_TRIP_REG); // 过压阈值设置为4.2V,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
+    uint16_t UV_TRIP_FULL = (uint16_t)((UV_Trip * 1000 - offset_mv) / gain_mv);
+    uint8_t UV_TRIP_REG = (UV_TRIP_FULL >> 4) & 0xFF; // 取中间8位
+    Int_BQ769_WriteReg(BQ_UV_TRIP, UV_TRIP_REG); // 欠压阈值设置为2.5V,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
+    // 配置CCCfg寄存器 
+    Int_BQ769_WriteReg(BQ_CC_CFG, 0x19); // 连续CC计数阈值设置为25mV,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
+    
+}

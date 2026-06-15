@@ -12,6 +12,9 @@
 #define BQ769_I2C_ADDRESS_WRITE (BQ769_ADDRESS << 1)
 #define BQ769_I2C_ADDRESS_READ ((BQ769_ADDRESS << 1) | 0x01)
 
+#define OV_Trip 4.2
+#define UV_Trip 3.8
+
 /**
  * @brief 唤醒
  */
@@ -42,6 +45,9 @@ void Int_BQ769_LoadGain(void);
 void Int_BQ769_LoadOffset(void);  
 
 void Int_BQ769_LoadCellVoltage(void);
+
+void Int_BQ769_ConfigReg(void);
+
 bool Int_BQ769_Read(uint8_t reg, uint8_t *read_buff, uint8_t read_len);
 
 #endif // __INT_BQ769_H_
