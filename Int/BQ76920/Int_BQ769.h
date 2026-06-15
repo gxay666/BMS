@@ -7,6 +7,7 @@
 #include "stdbool.h"
 
 #include "Int_BQ769_BSP.h"
+#include "Com_Bq769.h"
 
 #define BQ769_ADDRESS 0x08
 #define BQ769_I2C_ADDRESS_WRITE (BQ769_ADDRESS << 1)
@@ -14,6 +15,8 @@
 
 #define OV_Trip 4.2
 #define UV_Trip 3.8
+
+#define Cell_Num 5
 
 /**
  * @brief 唤醒
@@ -39,14 +42,22 @@ void Int_BQ769_WriteReg(uint8_t reg, uint8_t data);
  * @brief 从BQ769的寄存器读取多个字节
  */
 void Int_BQ769_ReadReg(uint8_t reg, uint8_t *buff, uint8_t read_len);
-
+//
 void Int_BQ769_LoadGain(void);
 
 void Int_BQ769_LoadOffset(void);  
 
 void Int_BQ769_LoadCellVoltage(void);
 
+void Int_BQ769_LoadPackVoltage(void);
+
+void Int_BQ769_LoadTemp(void);
+
 void Int_BQ769_ConfigReg(void);
+
+void Int_BQ769_LoadCurrent(void);
+
+void Int_BQ769_LoadBatSOC(void);
 
 bool Int_BQ769_Read(uint8_t reg, uint8_t *read_buff, uint8_t read_len);
 

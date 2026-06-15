@@ -7,6 +7,15 @@ static float gain_mv = 0;
 static int8_t offset_mv = 0;
 //cell voltage
 static float cell_voltage_v[5] = {0};
+//pack voltage
+float pack_voltage_v = 0;
+//temperature
+int8_t temp_c = 0;
+//Current
+float current_a = 0;
+//SOC
+float bat_soc = 0;
+
 /**
  * CRC-8 校验算法实现
  * 多项式: x^8 + x^2 + x + 1 (0x07)
@@ -163,6 +172,66 @@ void Int_BQ769_LoadCellVoltage(void)
     }
 }
 
+void Int_BQ769_LoadPackVoltage(void)
+{
+    printf("--------------总电压-----------------\r\n");
+    uint8_t pack_voltage_buff[2] = {0};
+    Int_BQ769_ReadReg(BQ_BAT_HI, pack_voltage_buff, 2); 
+    uint16_t pack_adc_value = ((pack_voltage_buff[0] & 0x3F) << 8) | pack_voltage_buff[1];
+    pack_voltage_v = (pack_adc_value * gain_mv * 4 + offset_mv * Cell_Num) / 1000.0f;
+    printf("Pack Voltage: adc_value=%d, voltage=%fv\r\n", pack_adc_value, pack_voltage_v);
+}
+/*
+    CC Reading (in µV) = [16-bit 2’s Complement Value] × (8.44 µV/LSB)
+*/
+
+
+
+void Int_BQ769_LoadCurrent(void)
+{
+    printf("--------------电流-----------------\r\n");
+    uint8_t current_buff[2] = {0};
+    Int_BQ769_ReadReg(BQ_CC_HI, current_buff, 2); 
+    uint16_t current_adc_value = ((current_buff[0] & 0x3F) << 8) | current_buff[1];
+    current_a = current_adc_value * 8.44f / (5 * 1000.0f); // 将ADC值转换为电流值，单位为安培
+    printf("Current: adc_value=%d, current=%fA\r\n", current_adc_value, current_a);
+} 
+
+/*
+    VTSX = (ADC in Decimal) x 382 µV/LSB    电压值
+    RTS = (10,000 × VTSX) ÷ (3.3 – VTSX)    热敏电阻阻值
+*/
+
+void Int_BQ769_LoadTemp(void)
+{
+    printf("--------------温度-----------------\r\n");
+    uint8_t temp_buff[2] = {0};
+    Int_BQ769_ReadReg(BQ_TS1_HI, temp_buff, 2); 
+    int16_t temp_adc_value = ((temp_buff[0] & 0x3F) << 8) | temp_buff[1];
+    float VTSX = temp_adc_value * 0.000382f; // 将ADC值转换为电压值，单位为伏特
+    float RTS = (10000.0f * VTSX) / (3.3f - VTSX); // 根据电压值计算热敏电阻的阻值
+    temp_c = Com_BQ769_getTemperByResist((int)RTS); // 根据热敏电阻的阻值计算温度，单位为摄氏度
+    printf("Temperature: adc_value=%d, temperature=%d°C\r\n", temp_adc_value, temp_c);
+}
+
+void Int_BQ769_LoadBatSOC(void)
+{
+    printf("--------------电池SOC-----------------\r\n");
+    // 直接读取电芯电压寄存器，不走LoadCellVoltage避免多余打印
+    uint8_t cell_buff[10] = {0};
+    Int_BQ769_ReadReg(BQ_VC1_HI, cell_buff, 10);
+    float sum_cell_mv = 0;
+    for (size_t i = 0; i < Cell_Num; i++)
+    {
+        uint16_t cell_adc = ((cell_buff[i * 2] & 0x3F) << 8) | cell_buff[i * 2 + 1];
+        cell_voltage_v[i] = (cell_adc * gain_mv + offset_mv) / 1000.0f; // 同步更新
+        sum_cell_mv += cell_voltage_v[i] * 1000.0f;
+    }
+    uint16_t avg_cell_mv = (uint16_t)(sum_cell_mv / Cell_Num);
+    // 查表：电压 -> SOC百分比
+    bat_soc = Com_BQ769_getPercentByVoltage(avg_cell_mv);
+    printf("Battery SOC: avg_cell_voltage=%dmV, SOC=%f%%\r\n", avg_cell_mv, bat_soc);
+}
 void Int_BQ769_ConfigReg(void)
 {
     // 配置SYS_ctrl1寄存器

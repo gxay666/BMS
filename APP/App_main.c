@@ -16,7 +16,11 @@ void App_main_task(void *pvParameters)
 
     while(1)
     {  
-       Int_BQ769_LoadCellVoltage();     
+       Int_BQ769_LoadCellVoltage(); 
+       Int_BQ769_LoadPackVoltage();
+       Int_BQ769_LoadCurrent();
+       Int_BQ769_LoadTemp();
+       Int_BQ769_LoadBatSOC();    
        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay for 2000 milliseconds     
     }
 }
