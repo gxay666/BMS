@@ -5,7 +5,7 @@
 #include "task.h"
 #include "stdio.h"
 #include "App_display.h"
-#include "Int_BQ769.h"
+#include "App_BMS.h"
 
 void App_main(void);
 

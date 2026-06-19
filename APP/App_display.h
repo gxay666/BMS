@@ -2,6 +2,7 @@
 #define _App_display_h
 
 #include "Int_OLED.h"
+
 // Function declarations for display-related functions
 void App_display_init(void);
 

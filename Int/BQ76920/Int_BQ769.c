@@ -97,8 +97,12 @@ void Int_BQ769_WriteReg(uint8_t reg_addr, uint8_t data)
     uint8_t crc = crc8(crc_calc_buff, 3);
     // 将数据和CRC一起发送
     uint8_t send_buff[2] = {data, crc}; // 最后一个字节保留给CRC
+    //添加临界区保护，防止在发送过程中被打断
+    taskENTER_CRITICAL();
     HAL_I2C_Mem_Write(&hi2c2, BQ769_I2C_ADDRESS_WRITE, reg_addr, I2C_MEMADD_SIZE_8BIT, send_buff, 2, 1000);
-    //vTaskDelay(1);考虑写周期
+    taskEXIT_CRITICAL();
+     //vTaskDelay(1);考虑写周期
+    
 }
 
 /**
@@ -108,7 +112,10 @@ void Int_BQ769_ReadReg(uint8_t reg, uint8_t *buff, uint8_t read_len)
 {
     // 读取数据和CRC
     uint8_t *rev_buff = pvPortCalloc(read_len * 2, sizeof(uint8_t));
+    //添加临界区保护，防止在读取过程中被打断
+    taskENTER_CRITICAL();
     HAL_I2C_Mem_Read(&hi2c2, BQ769_I2C_ADDRESS_READ, reg, I2C_MEMADD_SIZE_8BIT, rev_buff, read_len * 2, 1000);
+    taskEXIT_CRITICAL();
 
     for (size_t i = 0; i < read_len; i++)
     {
@@ -184,9 +191,6 @@ void Int_BQ769_LoadPackVoltage(void)
 /*
     CC Reading (in µV) = [16-bit 2’s Complement Value] × (8.44 µV/LSB)
 */
-
-
-
 void Int_BQ769_LoadCurrent(void)
 {
     printf("--------------电流-----------------\r\n");
@@ -196,12 +200,10 @@ void Int_BQ769_LoadCurrent(void)
     current_a = current_adc_value * 8.44f / (5 * 1000.0f); // 将ADC值转换为电流值，单位为安培
     printf("Current: adc_value=%d, current=%fA\r\n", current_adc_value, current_a);
 } 
-
 /*
     VTSX = (ADC in Decimal) x 382 µV/LSB    电压值
     RTS = (10,000 × VTSX) ÷ (3.3 – VTSX)    热敏电阻阻值
 */
-
 void Int_BQ769_LoadTemp(void)
 {
     printf("--------------温度-----------------\r\n");

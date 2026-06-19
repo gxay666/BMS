@@ -5,22 +5,11 @@ void App_main_task(void *pvParameters)
     App_display_init();
     App_display_show_message("BMS is ready");
 
-    Int_BQ769_Ship();
-    vTaskDelay(300); 
-    Int_BQ769_WakeUp();   
+    App_BMS_Init();
     
-    Int_BQ769_LoadGain();
-    Int_BQ769_LoadOffset();
-    Int_BQ769_ConfigReg(); 
-    
-
     while(1)
     {  
-       Int_BQ769_LoadCellVoltage(); 
-       Int_BQ769_LoadPackVoltage();
-       Int_BQ769_LoadCurrent();
-       Int_BQ769_LoadTemp();
-       Int_BQ769_LoadBatSOC();    
+       App_BMS_LoadBatInfo();    
        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay for 2000 milliseconds     
     }
 }

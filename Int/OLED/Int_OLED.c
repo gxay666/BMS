@@ -9,7 +9,10 @@ void Inf_OLED_WR_Byte(uint8_t dat, uint8_t mode)
     uint8_t tx_data[2];
     tx_data[0] = (mode == OLED_CMD) ? 0x00 : 0x40;
     tx_data[1] = dat;
+    //添加临界区保护，防止在发送过程中被打断
+    taskENTER_CRITICAL();
     HAL_I2C_Master_Transmit(&hi2c2, OLED_I2C_ADDRESS, tx_data, 2, 100);
+    taskEXIT_CRITICAL();
 }
 
 /**
