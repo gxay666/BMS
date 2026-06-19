@@ -1,23 +1,23 @@
 #include "App_main.h"
 
-void App_main_task(void *pvParameters)
+void App_BMS_task(void *pvParameters)
 {
     App_display_init();
-    App_display_show_message("BMS is ready");
 
     App_BMS_Init();
     
     while(1)
     {  
-       App_BMS_LoadBatInfo();    
+       App_BMS_LoadBatInfo();
+       App_display_show_message();
        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay for 2000 milliseconds     
     }
 }
 void App_main(void) 
 {
-    //´´½¨ÈÎÎñ
-    xTaskCreate(App_main_task, "App_main_task", 512, NULL, 5, NULL);
+    //åˆ›å»ºä¸»ä»»åŠ¡
+    xTaskCreate(App_BMS_task, "App_BMS_task", 512, NULL, 5, NULL);
     
-    //Æô¶¯µ÷¶ÈÆ÷
+    //å¯åŠ¨è°ƒåº¦å™¨
     vTaskStartScheduler();
 }
