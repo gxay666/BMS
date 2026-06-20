@@ -1,20 +1,23 @@
 #include "Int_BQ769.h"
 
+/** @brief BQ76920 寄存器镜像结构体 (内存缓存) */
 RegisterGroup BQ769_RegisterGroup;
-//gain
+/** @brief ADC 增益系数 (mV/LSB) */
 static float gain_mv = 0;
-//offset
+/** @brief ADC 偏移值 (mV) */
 static int8_t offset_mv = 0;
-//cell voltage
+/** @brief 各节电芯电压数组 (V)，索引 0~4 */
 static float cell_voltage_v[5] = {0};
-//pack voltage
+/** @brief 电池组总电压 (V) */
 float pack_voltage_v = 0;
-//temperature
+/** @brief 电池温度 (°C) */
 int8_t temp_c = 0;
-//Current
+/** @brief 充放电电流 (A)，正=放电，负=充电 */
 float current_a = 0;
-//SOC
+/** @brief 电池 SOC 百分比 (0.0~100.0) */
 float bat_soc = 0;
+/** @brief 各节电芯均衡标志，1=需要均衡，0=不需均衡 */
+uint8_t need_balance[5] = {0};
 
 /**
  * CRC-8 校验算法实现
@@ -147,6 +150,11 @@ void Int_BQ769_ReadReg(uint8_t reg, uint8_t *buff, uint8_t read_len)
 
 }
 
+/**
+ * @brief 从 BQ76920 加载 ADC 增益值
+ * @note  读取 ADCGAIN1 (0x50) 和 ADCGAIN2 (0x59)，合并为 5-bit 增益值，
+ *        计算公式: gain_mv = (gain_adc_value + 365) / 1000 (mV/LSB)
+ */
 void Int_BQ769_LoadGain(void)
 {
     uint8_t gain1 = 0;
@@ -160,12 +168,21 @@ void Int_BQ769_LoadGain(void)
     printf("BQ769 Load Gain: gain_adc_value=%d, gain_mv=%fmv/LSB\r\n", gain_adc_value, gain_mv);
 }
 
+/**
+ * @brief 从 BQ76920 加载 ADC 偏移值
+ * @note  读取 ADCOFFSET (0x51) 寄存器，该值为有符号 8-bit (mV)
+ */
 void Int_BQ769_LoadOffset(void)
 {
     Int_BQ769_ReadReg(BQ_ADCOFFSET, (uint8_t *)&offset_mv, 1);
     printf("BQ769 Load Offset: offset_mv=%dmv/LSB\r\n", offset_mv);
 }
 
+/**
+ * @brief 读取各节电芯电压并存入 cell_voltage_v[]
+ * @note  从 VC1_HI (0x0C) 连续读取 10 字节 (5 节 × 2 字节)，
+ *        14-bit ADC 值 (取高 6+8 位) × gain_mv + offset_mv 转换为 V
+ */
 void Int_BQ769_LoadCellVoltage(void)
 {
     printf("--------------单个电芯电压-----------------\r\n");
@@ -179,6 +196,11 @@ void Int_BQ769_LoadCellVoltage(void)
     }
 }
 
+/**
+ * @brief 读取电池组总电压并存入 pack_voltage_v
+ * @note  从 BAT_HI/BAT_LO (0x2A/0x2B) 读取 14-bit ADC 值，
+ *        总电压 = (ADC × gain_mv × 4 + offset_mv × Cell_Num) / 1000 (V)
+ */
 void Int_BQ769_LoadPackVoltage(void)
 {
     printf("--------------总电压-----------------\r\n");
@@ -188,9 +210,11 @@ void Int_BQ769_LoadPackVoltage(void)
     pack_voltage_v = (pack_adc_value * gain_mv * 4 + offset_mv * Cell_Num) / 1000.0f;
     printf("Pack Voltage: adc_value=%d, voltage=%fv\r\n", pack_adc_value, pack_voltage_v);
 }
-/*
-    CC Reading (in µV) = [16-bit 2’s Complement Value] × (8.44 µV/LSB)
-*/
+/**
+ * @brief 读取库仑计数器电流值并存入 current_a
+ * @note  CC Reading (µV) = [16-bit 2’s Complement Value] × (8.44 µV/LSB)
+ *        电流 (A) = CC 读数 (µV) / 采样电阻 (5mΩ) / 1000
+ */
 void Int_BQ769_LoadCurrent(void)
 {
     printf("--------------电流-----------------\r\n");
@@ -200,10 +224,12 @@ void Int_BQ769_LoadCurrent(void)
     current_a = current_adc_value * 8.44f / (5 * 1000.0f); // 将ADC值转换为电流值，单位为安培
     printf("Current: adc_value=%d, current=%fA\r\n", current_adc_value, current_a);
 } 
-/*
-    VTSX = (ADC in Decimal) x 382 µV/LSB    电压值
-    RTS = (10,000 × VTSX) ÷ (3.3 – VTSX)    热敏电阻阻值
-*/
+/**
+ * @brief 读取温度传感器并存入 temp_c
+ * @note  VTSX (V) = ADC × 382 µV/LSB
+ *        RTS (Ω) = (10000 × VTSX) ÷ (3.3 – VTSX)
+ *        再通过查表 Com_BQ769_getTemperByResist() 转换为 °C
+ */
 void Int_BQ769_LoadTemp(void)
 {
     printf("--------------温度-----------------\r\n");
@@ -216,6 +242,10 @@ void Int_BQ769_LoadTemp(void)
     printf("Temperature: adc_value=%d, temperature=%d°C\r\n", temp_adc_value, temp_c);
 }
 
+/**
+ * @brief 估算电池 SOC 并存入 bat_soc
+ * @note  读取各节电芯电压取平均值 (mV)，通过查表 Com_BQ769_getPercentByVoltage() 转为百分比
+ */
 void Int_BQ769_LoadBatSOC(void)
 {
     printf("--------------电池SOC-----------------\r\n");
@@ -234,6 +264,17 @@ void Int_BQ769_LoadBatSOC(void)
     bat_soc = Com_BQ769_getPercentByVoltage(avg_cell_mv);
     printf("Battery SOC: avg_cell_voltage=%dmV, SOC=%f%%\r\n", avg_cell_mv, bat_soc);
 }
+/**
+ * @brief 配置 BQ76920 全部保护寄存器
+ * @note  依次配置:
+ *        - SYS_CTRL1: ADC 使能、热敏电阻测温模式
+ *        - SYS_CTRL2: CC 连续计数使能、充放电 MOSFET 默认开启
+ *        - PROTECT1: 短路保护阈值 (10mV) / 延迟 (200µs)、RSNS 翻倍 (≥5mΩ)
+ *        - PROTECT2: 过流保护阈值 (160mV) / 延迟 (640ms)
+ *        - PROTECT3: 过压延迟 (4s)、欠压延迟 (4s)
+ *        - OV_TRIP/UV_TRIP: 根据 gain/offset 计算阈值
+ *        - CC_CFG: 连续 CC 计数阈值 (25mV)
+ */
 void Int_BQ769_ConfigReg(void)
 {
     // 配置SYS_ctrl1寄存器
@@ -277,5 +318,75 @@ void Int_BQ769_ConfigReg(void)
     Int_BQ769_WriteReg(BQ_UV_TRIP, UV_TRIP_REG); // 欠压阈值设置为2.5V,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
     // 配置CCCfg寄存器 
     Int_BQ769_WriteReg(BQ_CC_CFG, 0x19); // 连续CC计数阈值设置为25mV,具体得实验室测试验证，过低可能会误触发，过高可能会延迟保护响应
+    
+}
+/**
+ * @brief 电池被动均衡控制
+ * @note  均衡策略:
+ *        1. 温度不在 0~40°C 范围内或最低电压 < 3.7V 时关闭所有均衡
+ *        2. 找出最低电压电芯，对其他电芯标记均衡需求
+ *        3. 相邻电芯不同时均衡，优先保留电压更高的一路
+ *        4. 最终通过 I2C 写入 CellBal1 寄存器生效
+ */
+void Int_BQ769_BatBalance(void)
+{
+    // 这里以均衡电芯1为例，其他电芯类似
+    if (temp_c < 0 || temp_c > 40) // 如果温度在0~40℃范围内，开启均衡
+    {
+        BQ769_RegisterGroup.CellBal1.CellBal1Byte = 0x00;
+        return;
+    }
+    // 找出电压最低的电芯
+    uint8_t min_cell_index = 0;
+    for (size_t i = 1; i < Cell_Num; i++)
+    {
+        if (cell_voltage_v[i] < cell_voltage_v[min_cell_index])
+        {
+            min_cell_index = i;
+        }
+    }
+
+    printf("Battery Balance: min_cell_index=%d, min_cell_voltage=%fv\r\n", min_cell_index, cell_voltage_v[min_cell_index]);
+    // 如果最低电池电压接近下限，则不进行均衡，考虑充电
+    if (cell_voltage_v[min_cell_index] < 3.7) //
+    {
+        BQ769_RegisterGroup.CellBal1.CellBal1Byte = 0x00;
+        printf("Battery Balance: Cell%d voltage is low, skip balancing\r\n", min_cell_index + 1);
+        return;
+    }
+
+    for (size_t i = 0; i < 5; i++)
+    {
+        if (i == min_cell_index)
+        {
+            continue; // 跳过最低电压的电芯，不进行均衡
+        }
+        need_balance[i] = 1; // 标记需要均衡的电芯
+    }
+    //相邻电池不能同时进行均衡，因此只能均衡电芯1
+    for (size_t i = 0; i < 4; i++)
+    {
+        //判断相邻电池是否都需要均衡
+        if (need_balance[i] && need_balance[i + 1])
+        {
+           //判断谁的电压更高，优先均衡
+            if (cell_voltage_v[i] > cell_voltage_v[i + 1])
+            {
+                need_balance[i+1] = 0; // 不均衡电芯i
+            }
+            else
+            {
+                need_balance[i] = 0; // 不均衡电芯i
+            }
+        }
+       
+    }
+
+    BQ769_RegisterGroup.CellBal1.CellBal1Bit.CB1 = need_balance[0];
+    BQ769_RegisterGroup.CellBal1.CellBal1Bit.CB2 = need_balance[1];
+    BQ769_RegisterGroup.CellBal1.CellBal1Bit.CB3 = need_balance[2];
+    BQ769_RegisterGroup.CellBal1.CellBal1Bit.CB4 = need_balance[3];
+    BQ769_RegisterGroup.CellBal1.CellBal1Bit.CB5 = need_balance[4];
+    Int_BQ769_WriteReg(BQ_CELLBAL1, BQ769_RegisterGroup.CellBal1.CellBal1Byte);
     
 }
